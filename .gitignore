@@ -1,0 +1,29 @@
+.env
+.env.local
+*.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# data
+data/raw/
+
+# claude code — personal overrides only; shared config lives in .claude/settings.json
+.claude/settings.local.json
+
+# editors / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
