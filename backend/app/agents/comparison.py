@@ -50,14 +50,6 @@ def _satisfies(requirement: str, tokens: set[str]) -> bool:
     return bool(needed) and needed <= tokens
 
 
-def _cost(listing: Listing) -> Decimal:
-    """Total cost, falling back to price when shipping is unknown.
-
-    Unknown shipping is not free shipping; it just cannot be ranked on.
-    """
-    return listing.total_cost if listing.total_cost is not None else listing.price
-
-
 def _condition_rank(listing: Listing) -> int:
     if listing.condition is None:
         return 0
@@ -69,7 +61,7 @@ def rank(listings: list[Listing], requirements: Requirements, limit: int = 5) ->
     affordable = [
         listing
         for listing in listings
-        if requirements.budget is None or _cost(listing) <= Decimal(str(requirements.budget))
+        if requirements.budget is None or listing.cost <= Decimal(str(requirements.budget))
     ]
 
     def key(listing: Listing) -> tuple:
@@ -78,7 +70,7 @@ def rank(listings: list[Listing], requirements: Requirements, limit: int = 5) ->
             sum(_satisfies(r, tokens) for r in requirements.must_have),
             sum(_satisfies(r, tokens) for r in requirements.nice_to_have),
             _condition_rank(listing),
-            -_cost(listing),
+            -listing.cost,
         )
 
     return sorted(affordable, key=key, reverse=True)[:limit]

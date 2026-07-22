@@ -44,3 +44,13 @@ class Listing(BaseModel):
         if self.shipping_cost is None:
             return None
         return self.price + self.shipping_cost
+
+    @property
+    def cost(self) -> Decimal:
+        """What this listing costs for ranking and comparison.
+
+        Falls back to price when shipping is unknown. Use `total_cost` when the
+        distinction matters — this one deliberately blurs it so a listing with
+        unreported postage can still be ordered against the others.
+        """
+        return self.total_cost if self.total_cost is not None else self.price

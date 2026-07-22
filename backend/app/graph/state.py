@@ -81,4 +81,6 @@ class AgentState(BaseModel):
 
     cart: list[CartItem] = Field(default_factory=list)
     cart_flags: list[CartFlag] = Field(default_factory=list)
+    # Agent 5's flags written up as one recommendation. None until it has run.
+    cart_advice: str | None = None
     deals: list[Deal] = Field(default_factory=list)
