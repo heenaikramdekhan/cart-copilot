@@ -1,8 +1,8 @@
 # AI Multi-Agent Shopping Assistant
 
 Six cooperating agents turn a plain-language shopping request into a decision — parsing intent,
-searching mock stores, comparing products, summarizing reviews, and reasoning over the whole cart
-for savings and mismatches.
+searching real stores live, comparing products, summarizing real reviews, and reasoning over the
+whole cart for savings and mismatches. All data is real; nothing is mocked.
 
 See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full plan and
 [`CLAUDE.md`](CLAUDE.md) for the working agreement and architecture notes.
@@ -33,8 +33,8 @@ npm run dev
 Runs on <http://localhost:5173>; `/api/*` is proxied to the backend.
 
 **Database** — create a Supabase project, enable the `vector` extension, then run
-`data/seed/seed.sql` in the SQL editor. See [`data/README.md`](data/README.md).
+`data/seed/schema.sql` in the SQL editor. See [`data/README.md`](data/README.md).
 
 ## Status
 
-Phases 0 and 1 are done. Phase 2 (shared state schema + Requirement Analyzer) is next.
+Phase 0 scope is locked (real data, category Tiers 1–3). Phase 1 — the real data layer — is next.

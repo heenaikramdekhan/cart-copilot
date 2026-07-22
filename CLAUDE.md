@@ -2,9 +2,11 @@
 # AI Multi-Agent Shopping Assistant
 
 A six-agent system that turns a plain-language shopping request into a real decision:
-it parses intent, searches mock stores, compares products, summarizes reviews, and —
+it parses intent, searches real stores live, compares products, summarizes real reviews, and —
 the differentiator — **reasons over the whole cart** to catch savings, spec mismatches,
 and shipping inefficiencies.
+
+All product, price, and review data is real. There is no mock or synthetic data in this project.
 
 Full plan and scoping decisions: `docs/PROJECT_PLAN.md`.
 
@@ -55,8 +57,8 @@ frontend/
     components/    chat panel, comparison table, cart panel
     types/         shared TS types mirroring the agent state
 data/
-  raw/             source datasets (gitignored)
-  seed/            seed.sql, products.json, stores.json, store_listings.json
+  raw/             Amazon Reviews 2023 shards (gitignored, large)
+  seed/            schema.sql — review corpus + product-identity tables
 docs/
 ```
 
@@ -80,9 +82,9 @@ npm run dev          # http://localhost:5173
 | # | Agent | Responsibility | LLM? |
 |---|---|---|---|
 | 1 | Requirement Analyzer | free text → budget, category, must-haves, nice-to-haves | Yes |
-| 2 | Product Search | pgvector similarity search across store listings | No |
+| 2 | Product Search | live fan-out to eBay + Best Buy, normalize into candidate listings | No |
 | 3 | Comparison | normalize specs, rank top 5 | No |
-| 4 | Review Intelligence | review text → pros/cons | Yes |
+| 4 | Review Intelligence | real review text → pros/cons | Yes |
 | 5 | **Cart Optimization** | rule checks → natural-language recommendation | Rules + LLM |
 | 6 | Deal & Coupon | match cart against per-store discount rules | No |
 
@@ -99,11 +101,45 @@ Agents 5 and 6 are independent and run as parallel branches in the graph.
 - The system prompt for each agent is a stable prefix — mark it with `cache_control` so repeated
   turns hit the prompt cache.
 
+## Data sources
+
+| Data | Source | Freshness |
+|---|---|---|
+| Listings, multi-seller prices, shipping | eBay Browse API (free, ~5k calls/day) | live per query |
+| Prices, stock, star rating, review count | Best Buy Products API (free key) | live per query |
+| Review **text** | Amazon Reviews 2023 (UCSD McAuley Lab) | static snapshot, ends Sept 2023 |
+
+Products are joined across sources on **UPC/GTIN plus manufacturer model number**. Never join on
+fuzzy title similarity — that silently attaches the wrong reviews to a product.
+
+pgvector holds the review corpus, not a product catalog. Products are fetched live; reviews are
+retrieved by similarity against the stored corpus.
+
 ## Constraints worth remembering
 
-- Mock stores only. Live scraping of real retailers is out of scope (ToS + no open APIs).
-- Review text is synthetically generated from spec thresholds — it is internally consistent with
-  each product's specs by construction. Do not mix in externally-sourced review data.
-- Source pricing is in INR. Any currency conversion is a display concern, not a data concern.
-- Battery life is a heuristic estimate, not sourced data. Label it as such anywhere it surfaces.
-- Catalog is laptops only. Cross-category cart flags have no data to work with yet.
+- **No mock, dummy, or synthetic data anywhere.** If a real value is unavailable, omit the field and
+  say so in the UI — do not fabricate a plausible one.
+- No scraping. Amazon, Walmart, and Best Buy all prohibit it; the free APIs above are the only
+  sanctioned path. This is what makes the project publicly deployable.
+- Neither free API returns individual review text — only aggregate ratings. That is why review text
+  comes from the static corpus. Keep the review source behind one interface so a paid live-review
+  provider can be swapped in without touching the graph.
+- Review text is real but up to ~2 years old. Label its recency wherever it surfaces.
+- Not every product will have a review match. Surface match confidence; never invent coverage.
+- Prices are USD from the source APIs.
+
+## Locked category scope
+
+Tiers 1–3 are in scope. The schema is category-agnostic; these tiers are a data decision.
+
+- **Tier 1 — PC peripherals & components** (build first): laptops, monitors, keyboards, mice,
+  headsets, docking stations, SSDs/RAM, routers. Chosen because UPC identity is reliable, both APIs
+  carry it, Amazon Electronics is the deepest review corpus, and it is the only cluster with genuine
+  cross-item compatibility rules for Agent 5 (refresh rate vs. GPU, dock vs. available ports,
+  DDR4 vs. DDR5, same-seller shipping consolidation).
+- **Tier 2 — phones, tablets, audio**: same join mechanics as Tier 1, no new engineering.
+- **Tier 3 — home & kitchen appliances**: Best Buy coverage is partial here; expect eBay-only
+  results for some items.
+
+**Out of scope: furniture and other generic goods.** They lack UPCs and model numbers, so there is
+no reliable key to join reviews to prices. Revisit only after Tiers 1–3 work end to end.

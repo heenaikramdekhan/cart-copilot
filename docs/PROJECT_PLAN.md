@@ -7,9 +7,11 @@ A user types a plain-language request:
 > "I need a gaming laptop under $900 with at least 16GB RAM and good battery life."
 
 Instead of returning a list of search results, six cooperating agents understand the request,
-search across multiple mock stores, compare real options, summarize reviews, and — most
+search live across multiple real stores, compare real options, summarize real reviews, and — most
 importantly — actively reason over the user's cart to catch savings, mismatches, and better
 purchasing strategies.
+
+All data is real. No mock stores, no synthetic reviews.
 
 ## 2. Why this beats a typical shopping chatbot
 
@@ -34,15 +36,16 @@ Layers, top to bottom:
 1. **Frontend** — React + TypeScript: chat UI, cart view, comparison table
 2. **Backend API** — session state, cart CRUD, endpoint that runs the agent graph
 3. **LangGraph orchestrator** — routes one shared state object through the six agents
-4. **Data & AI** — mock store DB (Supabase Postgres + pgvector) and the Claude API, used only
-   where real reasoning is needed
+4. **Data & AI** — live store APIs (eBay Browse, Best Buy) for products and prices, a stored real
+   review corpus in Supabase Postgres + pgvector, and the Claude API, used only where real
+   reasoning is needed
 
 ### The six agents
 
 | # | Agent | Responsibility | LLM? |
 |---|---|---|---|
 | 1 | Requirement Analyzer | extracts budget, category, must-haves, nice-to-haves from free text | Yes |
-| 2 | Product Search | embedding similarity search across mock store listings | No |
+| 2 | Product Search | live fan-out to eBay + Best Buy, normalized into candidate listings | No |
 | 3 | Comparison | normalizes specs, ranks top 5 | No |
 | 4 | Review Intelligence | summarizes into pros/cons | Yes |
 | 5 | **Cart Optimization** | rule checks (duplicates, compatibility, shipping consolidation) turned into a natural-language recommendation | Rules + LLM |
@@ -71,27 +74,41 @@ free-text handoffs.
 
 ## 4. Phases
 
-### Phase 0 — Scope lock ✅
-- Category for MVP: laptops only (schema is category-agnostic, so phones/headphones can be added later)
-- Mock stores: 4
-- Dataset: hybrid — real laptop specs from a public Kaggle dataset, synthetic review text generated
-  from spec thresholds (avoids entity-resolution between unrelated spec and review datasets)
-- Team: solo. Timeline: no fixed deadline; first milestone is "laptops working end to end"
+### Phase 0 — Scope lock ✅ (revised — real data)
+- Stores: real. eBay Browse API and Best Buy Products API, both free tiers, queried live per request.
+- Reviews: real. Amazon Reviews 2023 (UCSD McAuley Lab) — 571M real reviews, free, static snapshot
+  ending Sept 2023.
+- Categories locked to Tiers 1–3 (below). Furniture and other generic goods are out of scope.
+- Team: solo. Timeline: no fixed deadline; first milestone is "Tier 1 working end to end".
 
-### Phase 1 — Data layer ✅
-- `seed.sql` — Supabase schema (`stores`, `products`, `store_listings`) + inserts
-- `products.json` — 28 laptops, stratified across budget/mid/premium/high-end and
-  gaming/general/productivity, with a category-agnostic `attributes` JSONB field and
-  spec-grounded synthetic review summaries
-- `stores.json` — 4 mock stores with distinct pricing bias and shipping costs
-- `store_listings.json` — 77 cross-store listings with realistic price variation, partial store
-  coverage per product (2–4 of 4), stock levels, occasional discounts
+#### Locked category tiers
+1. **PC peripherals & components** — laptops, monitors, keyboards, mice, headsets, docking stations,
+   SSDs/RAM, routers. Built first.
+2. **Phones, tablets, audio** — same join mechanics, no new engineering.
+3. **Home & kitchen appliances** — Best Buy coverage is partial; some items will be eBay-only.
 
-**Known gap:** catalog is laptops only, so cross-category cart flags ("gaming laptop + 60Hz monitor
-mismatch") have no data yet. Same-category logic (duplicate item, cheaper equivalent elsewhere,
-shipping consolidation) is fully testable. A small accessories set can be added later on the same schema.
+Selection criterion was **joinability**: reviews are ASIN-keyed and prices are UPC/GTIN-keyed, so a
+category only works when products carry a manufacturer model number and UPC. Furniture fails this
+test, which is why it is deferred rather than included.
 
-### Phase 2 — Agent state schema & Requirement Analyzer ← next
+This choice also closes the old cross-category gap — Tier 1 has genuine compatibility rules for
+Agent 5 (refresh rate vs. GPU class, dock vs. available ports, DDR4 vs. DDR5, same-seller shipping
+consolidation).
+
+### Phase 1 — Data layer ← next (redesign)
+
+The previous mock-data deliverables (`products.json`, `stores.json`, `store_listings.json`) are
+withdrawn. Replaced by:
+- eBay + Best Buy API clients, normalized into one listing shape
+- Amazon Reviews 2023 ingest for Tier 1 categories → Supabase, embedded for pgvector retrieval
+- A product-identity table keyed on UPC/GTIN + model number, joining live listings to stored reviews
+- A single review-source interface, so a paid live-review provider can be swapped in later without
+  touching the agent graph
+
+**Known limits, to be stated wherever they surface:** review text can be up to ~2 years old; not
+every live listing will have a review match, so match confidence must be shown rather than implied.
+
+### Phase 2 — Agent state schema & Requirement Analyzer
 - Finalize the shared state JSON schema
 - Build and test Agent 1 against 10–15 varied queries
 
@@ -118,12 +135,15 @@ once there is real data and working agents to connect to.
 
 ## 5. Scoping decisions to state explicitly in any report
 
-- Live scraping of real retailers isn't feasible — most prohibit it and don't offer open product
-  APIs. Mock stores keep the focus on agent architecture rather than data access.
-- Review text is synthetically generated from spec thresholds, not scraped — avoids an
-  entity-resolution problem between separately-sourced spec and review datasets, and keeps review
-  content internally consistent with each product's actual specs.
-- Source pricing is in INR (the sourced dataset's native currency); USD conversion is a one-line change.
-- Battery life is a synthetic estimate — the source dataset doesn't track it, but it was central to
-  the original example scenario, so a heuristic estimate (GPU type, screen size, CPU class) was
-  added and is clearly labeled as such.
+- **Prices and availability are live and real.** eBay and Best Buy both publish free official APIs;
+  no scraping is involved, so the system is legally deployable to real users.
+- **Review text is real but not live.** Neither free API exposes individual review text — only
+  aggregate star ratings and counts. Live review text is available only from paid scraping
+  services. The project therefore uses a large real review corpus (Amazon Reviews 2023) rather than
+  fabricating review content. Recency is disclosed in the UI.
+- **Products are matched on UPC/GTIN + model number, never on fuzzy title similarity.** Fuzzy title
+  matching would silently attach the wrong product's reviews.
+- **Categories are limited to Tiers 1–3 by joinability, not by ambition.** Generic goods such as
+  furniture have no stable product identifier to join on.
+- Pricing is USD, as returned by the source APIs.
+- Cost to operate is dominated by the Claude API (3 LLM agents per query), not by data access.
