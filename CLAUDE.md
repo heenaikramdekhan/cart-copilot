@@ -35,7 +35,7 @@ Project-specific corollaries:
 | Backend | FastAPI (Python 3.10+) |
 | Orchestration | LangGraph |
 | Database | Supabase (Postgres) |
-| LLM | Claude API — `claude-opus-4-8` via the `anthropic` Python SDK |
+| LLM | Gemini API — `gemini-2.5-flash` via the `google-genai` Python SDK |
 
 ## Layout
 
@@ -47,7 +47,7 @@ backend/
     api/           route modules (chat, cart)
     agents/        the six agents, one module each
     graph/         LangGraph state schema + graph builder
-    services/      Claude client, Supabase client, store APIs, review corpus
+    services/      LLM client, Supabase client, store APIs, review corpus
     prompts/       prompt templates for the 3 LLM agents
   scripts/         one-off scripts (corpus ingest)
   tests/
@@ -90,16 +90,20 @@ npm run dev          # http://localhost:5173
 
 Agents 5 and 6 are independent and run as parallel branches in the graph.
 
-## Claude API notes
+## LLM notes
 
-- Model: `claude-opus-4-8`. Use `thinking={"type": "adaptive"}` for the reasoning-heavy agents
-  (Requirement Analyzer, Cart Optimization narrative).
-- `temperature` / `top_p` / `top_k` and `budget_tokens` are **rejected** on this model — do not
-  add them. Control depth with `output_config={"effort": ...}`.
-- For agents that must return structured data (Requirement Analyzer, Review Intelligence), use
-  `client.messages.parse()` with a Pydantic model rather than parsing JSON out of free text.
-- The system prompt for each agent is a stable prefix — mark it with `cache_control` so repeated
-  turns hit the prompt cache.
+- Model: `gemini-2.5-flash` via the `google-genai` SDK. Chosen because Gemini's Flash tier is
+  permanently free with no card — a cost constraint, not a capability judgement. Pro-class models
+  left the free tier in April 2026.
+- Every LLM call goes through `app/services/llm.py`. Swapping providers means changing that file
+  and the three agent call sites, never the graph or the state schema.
+- For structured output, pass the Pydantic model as `response_schema` with
+  `response_mime_type="application/json"`, and read `response.parsed`. Do not parse JSON out of
+  free text — a malformed answer should fail at the boundary, not downstream.
+- Each agent's system prompt lives in its own module under `prompts/` so it stays a stable,
+  reusable constant. Nothing per-request may be interpolated into it.
+- Free tier is rate limited (requests per minute and per day). Batch or back off rather than
+  retrying in a tight loop.
 
 ## Data sources
 
