@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Listing(BaseModel):
@@ -33,6 +33,10 @@ class Listing(BaseModel):
     gtin: str | None = None
     mpn: str | None = None
     brand: str | None = None
+
+    # Store-reported specs, normalized to a flat map. This is the only spec
+    # data real listings carry, and it is what Comparison ranks against.
+    aspects: dict[str, str] = Field(default_factory=dict)
 
     @property
     def total_cost(self) -> Decimal | None:

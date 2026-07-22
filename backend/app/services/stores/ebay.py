@@ -56,12 +56,22 @@ def listing_from_summary(summary: dict) -> Listing:
     )
 
 
+def _aspects(item: dict) -> dict[str, str]:
+    """Flatten eBay's localizedAspects into a plain name -> value map."""
+    return {
+        aspect["name"]: aspect["value"]
+        for aspect in item.get("localizedAspects") or []
+        if aspect.get("name") and aspect.get("value")
+    }
+
+
 def enrich(listing: Listing, item: dict) -> Listing:
-    """Add gtin/mpn/brand from a getItems detail response."""
+    """Add product identity and specs from a getItems detail response."""
     return listing.model_copy(
         update={
             "gtin": item.get("gtin"),
             "mpn": item.get("mpn"),
             "brand": item.get("brand"),
+            "aspects": _aspects(item),
         }
     )

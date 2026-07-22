@@ -92,3 +92,21 @@ def test_enrich_adds_product_identity():
     assert enriched.mpn == "910-006556"
     assert enriched.brand == "Logitech"
     assert enriched.price == listing.price
+
+
+def test_enrich_flattens_specs_for_comparison():
+    """localizedAspects is the only spec data real listings carry."""
+    listing = listing_from_summary(SUMMARY)
+
+    enriched = enrich(
+        listing,
+        {
+            "localizedAspects": [
+                {"type": "STRING", "name": "Connectivity", "value": "Wireless"},
+                {"type": "STRING", "name": "Colour", "value": "Graphite"},
+                {"type": "STRING", "name": "Broken", "value": None},
+            ]
+        },
+    )
+
+    assert enriched.aspects == {"Connectivity": "Wireless", "Colour": "Graphite"}
