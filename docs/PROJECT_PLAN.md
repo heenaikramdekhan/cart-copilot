@@ -37,7 +37,7 @@ Layers, top to bottom:
 2. **Backend API** — session state, cart CRUD, endpoint that runs the agent graph
 3. **LangGraph orchestrator** — routes one shared state object through the six agents
 4. **Data & AI** — live store APIs (eBay Browse, Best Buy) for products and prices, a stored real
-   review corpus in Supabase Postgres, and the Claude API, used only where real
+   review corpus in Supabase Postgres, and the Gemini API, used only where real
    reasoning is needed
 
 ### The six agents
@@ -150,7 +150,9 @@ once there is real data and working agents to connect to.
 - **Categories are limited to Tiers 1–3 by joinability, not by ambition.** Generic goods such as
   furniture have no stable product identifier to join on.
 - Pricing is USD, as returned by the source APIs.
-- Cost to operate is dominated by the Claude API (3 LLM agents per query), not by data access.
+- **The whole system runs at zero cost.** Gemini's Flash tier is permanently free with no card,
+  and both data sources are free. The binding constraint is the free tier's rate limit — 5 requests
+  per minute per model, and three LLM agents run per user query — not money.
 - **Daraz was evaluated and excluded.** Daraz is the dominant marketplace in Pakistan, so it was
   the obvious candidate for a local-market version. Its Open Platform API is a *seller* API —
   create products, update prices, manage orders — and requires seller authorization; there is no
