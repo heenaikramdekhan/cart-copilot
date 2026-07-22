@@ -18,8 +18,9 @@ describes a product catalog.
 `raw/` — downloaded Amazon Reviews 2023 shards for the Tier 1 categories. Large and gitignored;
 needed only to run the ingest, not to run the app.
 
-`seed/` — `schema.sql`: the review corpus table, its pgvector embedding column, and the
-product-identity table that joins live listings to stored reviews on UPC/GTIN + model number.
+`seed/` — `schema.sql`: the review corpus table and the product-identity table that joins live
+listings to stored reviews on brand + model number. There is no embedding column: reviews are
+retrieved by product identity, not by similarity.
 
 ## Category scope
 

@@ -32,7 +32,7 @@ npm run dev
 
 Runs on <http://localhost:5173>; `/api/*` is proxied to the backend.
 
-**Database** — create a Supabase project, enable the `vector` extension, then run
+**Database** — create a Supabase project, then run
 `data/seed/schema.sql` in the SQL editor. See [`data/README.md`](data/README.md).
 
 ## Status

@@ -37,7 +37,7 @@ Layers, top to bottom:
 2. **Backend API** — session state, cart CRUD, endpoint that runs the agent graph
 3. **LangGraph orchestrator** — routes one shared state object through the six agents
 4. **Data & AI** — live store APIs (eBay Browse, Best Buy) for products and prices, a stored real
-   review corpus in Supabase Postgres + pgvector, and the Claude API, used only where real
+   review corpus in Supabase Postgres, and the Claude API, used only where real
    reasoning is needed
 
 ### The six agents
@@ -49,7 +49,7 @@ Layers, top to bottom:
 | 3 | Comparison | normalizes specs, ranks top 5 | No |
 | 4 | Review Intelligence | summarizes into pros/cons | Yes |
 | 5 | **Cart Optimization** | rule checks (duplicates, compatibility, shipping consolidation) turned into a natural-language recommendation | Rules + LLM |
-| 6 | Deal & Coupon | matches cart against each store's discount rules | No |
+| 6 | Deal & Coupon | surfaces real markdowns and coupon availability reported by the store | No |
 
 Only 3 of 6 agents need an LLM call. This is deliberate: it keeps the multi-agent architecture
 honest (tools + reasoning, not LLM calls end to end) and keeps the system cheaper and more testable.
@@ -87,9 +87,9 @@ free-text handoffs.
 2. **Phones, tablets, audio** — same join mechanics, no new engineering.
 3. **Home & kitchen appliances** — Best Buy coverage is partial; some items will be eBay-only.
 
-Selection criterion was **joinability**: reviews are ASIN-keyed and prices are UPC/GTIN-keyed, so a
-category only works when products carry a manufacturer model number and UPC. Furniture fails this
-test, which is why it is deferred rather than included.
+Selection criterion was **joinability**: reviews are ASIN-keyed and listings are keyed by
+manufacturer part number, so a category only works when products carry a real model number.
+Furniture fails this test, which is why it is deferred rather than included.
 
 This choice also closes the old cross-category gap — Tier 1 has genuine compatibility rules for
 Agent 5 (refresh rate vs. GPU class, dock vs. available ports, DDR4 vs. DDR5, same-seller shipping
@@ -100,8 +100,8 @@ consolidation).
 The previous mock-data deliverables (`products.json`, `stores.json`, `store_listings.json`) are
 withdrawn. Replaced by:
 - eBay + Best Buy API clients, normalized into one listing shape
-- Amazon Reviews 2023 ingest for Tier 1 categories → Supabase, embedded for pgvector retrieval
-- A product-identity table keyed on UPC/GTIN + model number, joining live listings to stored reviews
+- Amazon Reviews 2023 ingest for Tier 1 categories → Supabase, retrieved by product identity
+- A product-identity table keyed on brand + model number, joining live listings to stored reviews
 - A single review-source interface, so a paid live-review provider can be swapped in later without
   touching the agent graph
 
@@ -141,9 +141,21 @@ once there is real data and working agents to connect to.
   aggregate star ratings and counts. Live review text is available only from paid scraping
   services. The project therefore uses a large real review corpus (Amazon Reviews 2023) rather than
   fabricating review content. Recency is disclosed in the UI.
-- **Products are matched on UPC/GTIN + model number, never on fuzzy title similarity.** Fuzzy title
+- **Deals come from the store, not from invented rules.** Real retailers do not publish coupon
+  rules, so Agent 6 surfaces the markdown and coupon-availability data eBay already returns on a
+  listing. The original mock-store design matched carts against discount rules written by hand;
+  that had to change when the stores became real.
+- **Products are matched on brand + model number, never on fuzzy title similarity.** Fuzzy title
   matching would silently attach the wrong product's reviews.
 - **Categories are limited to Tiers 1–3 by joinability, not by ambition.** Generic goods such as
   furniture have no stable product identifier to join on.
 - Pricing is USD, as returned by the source APIs.
 - Cost to operate is dominated by the Claude API (3 LLM agents per query), not by data access.
+- **Daraz was evaluated and excluded.** Daraz is the dominant marketplace in Pakistan, so it was
+  the obvious candidate for a local-market version. Its Open Platform API is a *seller* API —
+  create products, update prices, manage orders — and requires seller authorization; there is no
+  public catalog-search endpoint, and no legal route to review text at all. The only sanctioned
+  read path is the Involve Asia affiliate datafeed, which carries prices but not reviews. Adding
+  Daraz would therefore mean scraping, which the project rules out. Because the store layer is
+  built around one normalized `Listing` shape, adding Daraz later is a single new store client
+  with no change to the agents.
