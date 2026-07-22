@@ -27,9 +27,18 @@ def _shipping_cost(summary: dict) -> Decimal | None:
     return _amount(options[0].get("shippingCost"))
 
 
+def _discount_percent(marketing: dict) -> int | None:
+    """eBay reports the percentage as a string; absent means no markdown."""
+    percent = marketing.get("discountPercentage")
+    if percent is None:
+        return None
+    return int(float(percent))
+
+
 def listing_from_summary(summary: dict) -> Listing:
     """Map one itemSummaries entry. Carries no product identity — see enrich()."""
     price = summary["price"]
+    marketing = summary.get("marketingPrice") or {}
     return Listing(
         store=STORE,
         store_item_id=summary["itemId"],
@@ -41,6 +50,9 @@ def listing_from_summary(summary: dict) -> Listing:
         condition=summary.get("condition"),
         seller=(summary.get("seller") or {}).get("username"),
         image_url=(summary.get("image") or {}).get("imageUrl"),
+        original_price=_amount(marketing.get("originalPrice")),
+        discount_percent=_discount_percent(marketing),
+        has_coupon=bool(summary.get("availableCoupons")),
     )
 
 

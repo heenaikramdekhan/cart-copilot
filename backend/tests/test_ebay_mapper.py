@@ -54,6 +54,32 @@ def test_unknown_shipping_stays_unknown():
     assert listing.total_cost is None
 
 
+def test_maps_store_reported_discount():
+    """Agent 6 surfaces these; nothing about a discount is inferred."""
+    summary = {
+        **SUMMARY,
+        "marketingPrice": {
+            "originalPrice": {"value": "99.99", "currency": "USD"},
+            "discountPercentage": "20",
+        },
+        "availableCoupons": True,
+    }
+
+    listing = listing_from_summary(summary)
+
+    assert listing.original_price == Decimal("99.99")
+    assert listing.discount_percent == 20
+    assert listing.has_coupon is True
+
+
+def test_absent_discount_is_not_a_zero_discount():
+    listing = listing_from_summary(SUMMARY)
+
+    assert listing.original_price is None
+    assert listing.discount_percent is None
+    assert listing.has_coupon is False
+
+
 def test_enrich_adds_product_identity():
     listing = listing_from_summary(SUMMARY)
 

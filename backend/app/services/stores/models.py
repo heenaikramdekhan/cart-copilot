@@ -22,6 +22,12 @@ class Listing(BaseModel):
     seller: str | None = None
     image_url: str | None = None
 
+    # Discounts the store itself reports. Agent 6 surfaces these rather than
+    # matching against coupon rules, which real retailers do not publish.
+    original_price: Decimal | None = None
+    discount_percent: int | None = None
+    has_coupon: bool = False
+
     # Product identity, used to join listings to reviews. Populated by the
     # store's detail call, not by search results.
     gtin: str | None = None
