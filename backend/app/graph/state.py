@@ -15,12 +15,17 @@ from app.services.stores.models import Listing
 
 
 class Requirements(BaseModel):
-    """Agent 1 — Requirement Analyzer."""
+    """Agent 1 — Requirement Analyzer.
 
-    category: str | None = None
-    budget: Decimal | None = None
-    must_have: list[str] = Field(default_factory=list)
-    nice_to_have: list[str] = Field(default_factory=list)
+    This is the schema Claude fills in, so every field has to survive JSON
+    Schema. `budget` is a float rather than a Decimal for that reason — it is a
+    threshold the user stated, not money being summed. Prices stay Decimal.
+    """
+
+    category: str | None = Field(default=None, description="Product category, e.g. 'laptop', 'mouse'")
+    budget: float | None = Field(default=None, description="Maximum the user will spend, in USD")
+    must_have: list[str] = Field(default_factory=list, description="Hard requirements")
+    nice_to_have: list[str] = Field(default_factory=list, description="Preferences")
 
 
 class ReviewSummary(BaseModel):
