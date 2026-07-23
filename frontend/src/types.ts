@@ -27,6 +27,9 @@ export type Listing = {
   gtin: string | null;
   mpn: string | null;
   brand: string | null;
+  /** Store-reported aggregate rating out of 5, and how many ratings back it. */
+  rating: number | null;
+  rating_count: number | null;
   aspects: Record<string, string>;
 };
 

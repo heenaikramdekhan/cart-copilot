@@ -1,23 +1,25 @@
 import { useState } from "react";
-import { addItem, chat } from "../api";
-import type { CartResponse, ChatResponse, Listing } from "../types";
+import { chat } from "../api";
+import type { ChatResponse } from "../types";
 
-type Props = { onCart: (cart: CartResponse) => void };
+type Props = {
+  result: ChatResponse | null;
+  onResult: (result: ChatResponse) => void;
+};
 
-export default function ChatPanel({ onCart }: Props) {
+const SUGGESTIONS = ["wireless mouse", "mechanical keyboard", "usb hub", "gaming headset"];
+
+export default function ChatPanel({ result, onResult }: Props) {
   const [message, setMessage] = useState("");
-  const [result, setResult] = useState<ChatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function send(event: React.FormEvent) {
-    event.preventDefault();
-    if (!message.trim()) return;
-
+  async function runSearch(query: string) {
+    if (!query.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      setResult(await chat(message));
+      onResult(await chat(query));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -25,37 +27,49 @@ export default function ChatPanel({ onCart }: Props) {
     }
   }
 
-  async function add(listing: Listing) {
-    try {
-      onCart(await addItem(listing));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+  function send(event: React.FormEvent) {
+    event.preventDefault();
+    runSearch(message);
+  }
+
+  function pick(query: string) {
+    setMessage(query);
+    runSearch(query);
   }
 
   const requirements = result?.requirements;
 
   return (
-    <section className="panel">
+    <section className="panel tone-cobalt">
       <h2>What are you shopping for?</h2>
+      <p className="sub">Describe it in plain English. Budget, must haves, all of it.</p>
 
       <form onSubmit={send} className="row">
         <input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="a wireless mouse under $60, must be bluetooth"
+          placeholder="a wireless mouse under $40, must be bluetooth"
           aria-label="Shopping request"
         />
         <button type="submit" disabled={busy || !message.trim()}>
-          {busy ? "Reading…" : "Send"}
+          {busy ? "Searching…" : "Search"}
         </button>
       </form>
+
+      <div className="chips">
+        <span className="chips-label">Try</span>
+        {SUGGESTIONS.map((q) => (
+          <button type="button" key={q} className="chip" onClick={() => pick(q)} disabled={busy}>
+            {q}
+          </button>
+        ))}
+      </div>
 
       {error && <p className="error">{error}</p>}
 
       {requirements && (
         <div className="result">
-          <h3>Understood as</h3>
+          <p className="section-label">Understood as</p>
           <dl>
             <dt>Category</dt>
             <dd>{requirements.category ?? <span className="muted">not stated</span>}</dd>
@@ -65,7 +79,7 @@ export default function ChatPanel({ onCart }: Props) {
               {requirements.budget === null ? (
                 <span className="muted">not stated</span>
               ) : (
-                `$${requirements.budget}`
+                <span className="mono">${requirements.budget}</span>
               )}
             </dd>
 
@@ -95,39 +109,6 @@ export default function ChatPanel({ onCart }: Props) {
               )}
             </dd>
           </dl>
-
-          {result && result.ranked_products.length > 0 && (
-            <>
-              <h3>Top picks</h3>
-              <ul className="items">
-                {result.ranked_products.map((listing) => (
-                  <li key={listing.store_item_id}>
-                    <div>
-                      <a href={listing.url} target="_blank" rel="noreferrer">
-                        {listing.title}
-                      </a>
-                      <span className="muted">
-                        {" "}
-                        ${listing.price}
-                        {listing.shipping_cost && ` + $${listing.shipping_cost} shipping`}
-                        {listing.seller && ` · ${listing.seller}`}
-                      </span>
-                    </div>
-                    <button onClick={() => add(listing)}>Add</button>
-                  </li>
-                ))}
-              </ul>
-              {result.ranked_products.some((l) => l.store === "catalog") && (
-                <p className="notice">
-                  Prices are from a Sept 2023 catalog snapshot. Live store search connects when its
-                  API key is added.
-                </p>
-              )}
-            </>
-          )}
-
-          {/* Say why the list is empty rather than implying the search found nothing. */}
-          {result?.unavailable && <p className="notice">{result.unavailable}</p>}
         </div>
       )}
     </section>

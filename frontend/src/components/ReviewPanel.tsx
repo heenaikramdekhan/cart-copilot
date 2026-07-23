@@ -26,8 +26,9 @@ export default function ReviewPanel() {
   }
 
   return (
-    <section className="panel">
+    <section className="panel tone-gold">
       <h2>What buyers actually said</h2>
+      <p className="sub">Real pros and cons, summarized from actual customer reviews.</p>
 
       <form onSubmit={look} className="row">
         <input
@@ -66,7 +67,7 @@ export default function ReviewPanel() {
 
           <div className="verdict">
             <div>
-              <h4 className="good">Praised</h4>
+              <h4 className="good">👍 Praised</h4>
               <ul>
                 {result.summary.pros.map((x) => (
                   <li key={x}>{x}</li>
@@ -74,7 +75,7 @@ export default function ReviewPanel() {
               </ul>
             </div>
             <div>
-              <h4 className="bad">Complained about</h4>
+              <h4 className="bad">👎 Complained about</h4>
               <ul>
                 {result.summary.cons.map((x) => (
                   <li key={x}>{x}</li>
