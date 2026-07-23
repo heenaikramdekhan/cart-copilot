@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { chat } from "../api";
-import type { ChatResponse } from "../types";
+import { addItem, chat } from "../api";
+import type { CartResponse, ChatResponse, Listing } from "../types";
 
-export default function ChatPanel() {
+type Props = { onCart: (cart: CartResponse) => void };
+
+export default function ChatPanel({ onCart }: Props) {
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<ChatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,14 @@ export default function ChatPanel() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function add(listing: Listing) {
+    try {
+      onCart(await addItem(listing));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -85,6 +95,30 @@ export default function ChatPanel() {
               )}
             </dd>
           </dl>
+
+          {result && result.ranked_products.length > 0 && (
+            <>
+              <h3>Top picks</h3>
+              <ul className="items">
+                {result.ranked_products.map((listing) => (
+                  <li key={listing.store_item_id}>
+                    <div>
+                      <a href={listing.url} target="_blank" rel="noreferrer">
+                        {listing.title}
+                      </a>
+                      <span className="muted">
+                        {" "}
+                        ${listing.price}
+                        {listing.shipping_cost && ` + $${listing.shipping_cost} shipping`}
+                        {listing.seller && ` · ${listing.seller}`}
+                      </span>
+                    </div>
+                    <button onClick={() => add(listing)}>Add</button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           {/* Say why the list is empty rather than implying the search found nothing. */}
           {result?.unavailable && <p className="notice">{result.unavailable}</p>}

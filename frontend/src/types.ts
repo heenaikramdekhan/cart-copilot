@@ -39,10 +39,21 @@ export type CartFlag = {
   saves: Money | null;
 };
 
+/** A discount the store itself reports. Nothing here is inferred. */
+export type Deal = {
+  store_item_id: string;
+  /** "markdown" | "coupon_available" */
+  kind: string;
+  /** Both null on a coupon; a markdown carries whichever the store reported. */
+  original_price: Money | null;
+  discount_percent: number | null;
+};
+
 export type CartResponse = {
   items: CartItem[];
   flags: CartFlag[];
   advice: string | null;
+  deals: Deal[];
 };
 
 export type ChatResponse = {

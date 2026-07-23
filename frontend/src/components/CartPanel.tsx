@@ -1,22 +1,19 @@
-import { useEffect, useState } from "react";
-import { getCart, removeItem } from "../api";
+import { removeItem } from "../api";
 import type { CartResponse } from "../types";
 
-export default function CartPanel() {
-  const [cart, setCart] = useState<CartResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type Props = {
+  cart: CartResponse | null;
+  error: string | null;
+  onCart: (cart: CartResponse) => void;
+  onError: (message: string) => void;
+};
 
-  useEffect(() => {
-    getCart()
-      .then(setCart)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
-
+export default function CartPanel({ cart, error, onCart, onError }: Props) {
   async function drop(storeItemId: string) {
     try {
-      setCart(await removeItem(storeItemId));
+      onCart(await removeItem(storeItemId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      onError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -49,8 +46,7 @@ export default function CartPanel() {
         </ul>
       ) : (
         <p className="notice">
-          Your cart is empty. Items are added from search results, which arrive once the store API
-          is connected.
+          Your cart is empty. Add items from the search results on the left.
         </p>
       )}
 
@@ -66,6 +62,43 @@ export default function CartPanel() {
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {cart?.deals.length ? (
+        <>
+          <h3>Deals</h3>
+          <ul className="flags">
+            {cart.deals.map((deal) => {
+              // Name the product from the cart rather than showing the raw id.
+              const item = cart.items.find(
+                (it) => it.listing.store_item_id === deal.store_item_id,
+              );
+              const title = item?.listing.title ?? deal.store_item_id;
+              return (
+                <li key={deal.store_item_id + deal.kind}>
+                  {deal.kind === "coupon_available" ? (
+                    <>
+                      <span className="kind">coupon</span>
+                      {title}
+                      <span className="muted"> — coupon available at checkout</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="kind">markdown</span>
+                      {title}
+                      {deal.discount_percent !== null && (
+                        <strong> {deal.discount_percent}% off</strong>
+                      )}
+                      {deal.original_price && (
+                        <span className="muted"> (was ${deal.original_price})</span>
+                      )}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       ) : null}
     </section>
   );

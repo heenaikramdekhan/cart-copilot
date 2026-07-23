@@ -1,4 +1,4 @@
-import type { CartResponse, ChatResponse, ReviewResponse } from "./types";
+import type { CartResponse, ChatResponse, Listing, ReviewResponse } from "./types";
 
 /** One cart per browser tab. Sessions live in backend memory, so this is not persisted. */
 const sessionId = crypto.randomUUID();
@@ -26,6 +26,13 @@ export function chat(message: string) {
 
 export function getCart() {
   return request<CartResponse>(`/api/cart/${sessionId}`);
+}
+
+export function addItem(listing: Listing, quantity = 1) {
+  return request<CartResponse>(`/api/cart/${sessionId}/items`, {
+    method: "POST",
+    body: JSON.stringify({ listing, quantity }),
+  });
 }
 
 export function removeItem(storeItemId: string) {
