@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
 import { authConfigured } from "../supabase";
 import AuthForm from "./AuthForm";
 import Logo from "./Logo";
+
+type Props = { authError?: string | null };
 
 const FEATURES = [
   {
@@ -18,23 +19,7 @@ const FEATURES = [
   },
 ];
 
-export default function Landing() {
-  const [linkError, setLinkError] = useState<string | null>(null);
-
-  // Supabase drops auth link errors (like an expired confirmation) into the URL
-  // hash. Turn it into one short message and wipe the long hash from the bar.
-  useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.slice(1));
-    if (hash.get("error")) {
-      setLinkError(
-        hash.get("error_code") === "otp_expired"
-          ? "That email link has expired. Sign up again to get a fresh one."
-          : hash.get("error_description") || "Something went wrong with that link.",
-      );
-      history.replaceState(null, "", window.location.pathname);
-    }
-  }, []);
-
+export default function Landing({ authError }: Props) {
   return (
     <div className="landing">
       <div className="landing-hero">
@@ -58,7 +43,7 @@ export default function Landing() {
       </div>
 
       <div className="landing-auth">
-        {linkError && <p className="notice">{linkError}</p>}
+        {authError && <p className="notice">{authError}</p>}
         {authConfigured ? (
           <AuthForm />
         ) : (

@@ -1,5 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { getCart } from "./api";
 import CartPanel from "./components/CartPanel";
 import ChatPanel from "./components/ChatPanel";
@@ -14,6 +15,7 @@ import "./styles.css";
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [result, setResult] = useState<ChatResponse | null>(null);
   const [cart, setCart] = useState<CartResponse | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
@@ -26,6 +28,20 @@ export default function App() {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
     return () => data.subscription.unsubscribe();
+  }, []);
+
+  // Turn a Supabase auth-link error (e.g. an expired confirmation) into a
+  // message and strip the long hash from the URL.
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    if (hash.get("error")) {
+      setAuthError(
+        hash.get("error_code") === "otp_expired"
+          ? "That email link has expired. Sign up again to get a fresh one."
+          : hash.get("error_description") || "Something went wrong with that link.",
+      );
+      history.replaceState(null, "", window.location.pathname);
+    }
   }, []);
 
   // Load the cart once signed in.
@@ -54,63 +70,60 @@ export default function App() {
     };
   }, []);
 
-  if (!authReady) {
-    return (
-      <>
-        <div className="bg-glow" aria-hidden="true" />
-        <div className="app">
-          <p className="loading">Loading…</p>
+  const workspace = (
+    <div className="app">
+      <header className="hero">
+        <div className="hero-top">
+          <h1 className="brand">
+            <Logo />
+            <span className="brand-name">Cart Copilot</span>
+          </h1>
+          <div className="account">
+            <span className="account-email mono">
+              {session?.user.user_metadata?.name || session?.user.email}
+            </span>
+            <button className="ghost" onClick={() => supabase.auth.signOut()}>
+              Sign out
+            </button>
+          </div>
         </div>
-      </>
-    );
-  }
+        <p className="tagline">
+          An AI assistant that reasons over your whole cart, catching savings, spec mismatches, and
+          shipping you pay for twice.
+        </p>
+        <p className="trust">Real data only. 141,240 genuine customer reviews and real prices.</p>
+      </header>
 
-  if (!session) {
-    return (
-      <>
-        <div className="bg-glow" aria-hidden="true" />
-        <Landing />
-      </>
-    );
-  }
+      <div className="grid">
+        <div className="col-main">
+          <ChatPanel result={result} onResult={setResult} />
+          <ComparisonTable result={result} onCart={setCart} />
+        </div>
+        <div className="col-side">
+          <CartPanel cart={cart} error={cartError} onCart={setCart} onError={setCartError} />
+          <ReviewPanel />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
       <div className="bg-glow" aria-hidden="true" />
-      <div className="app">
-        <header className="hero">
-          <div className="hero-top">
-            <h1 className="brand">
-              <Logo />
-              <span className="brand-name">Cart Copilot</span>
-            </h1>
-            <div className="account">
-              <span className="account-email mono">
-                {session.user.user_metadata?.name || session.user.email}
-              </span>
-              <button className="ghost" onClick={() => supabase.auth.signOut()}>
-                Sign out
-              </button>
-            </div>
-          </div>
-          <p className="tagline">
-            An AI assistant that reasons over your whole cart, catching savings, spec mismatches, and
-            shipping you pay for twice.
-          </p>
-          <p className="trust">Real data only. 141,240 genuine customer reviews and real prices.</p>
-        </header>
-
-        <div className="grid">
-          <div className="col-main">
-            <ChatPanel result={result} onResult={setResult} />
-            <ComparisonTable result={result} onCart={setCart} />
-          </div>
-          <div className="col-side">
-            <CartPanel cart={cart} error={cartError} onCart={setCart} onError={setCartError} />
-            <ReviewPanel />
-          </div>
+      {!authReady ? (
+        <div className="app">
+          <p className="loading">Loading…</p>
         </div>
-      </div>
+      ) : (
+        <Routes>
+          <Route
+            path="/login"
+            element={session ? <Navigate to="/" replace /> : <Landing authError={authError} />}
+          />
+          <Route path="/" element={session ? workspace : <Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to={session ? "/" : "/login"} replace />} />
+        </Routes>
+      )}
     </>
   );
 }
