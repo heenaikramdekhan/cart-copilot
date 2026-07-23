@@ -1,0 +1,25 @@
+# Render Blueprint for the FastAPI backend.
+# In the Render dashboard: New > Blueprint, point it at this repo, and it
+# creates the service below. The four secret env vars are filled in by hand
+# (they are marked sync:false so they never live in the repo).
+services:
+  - type: web
+    name: cart-copilot-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      # Set to the deployed frontend URL once it exists, e.g.
+      # https://cart-copilot.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
