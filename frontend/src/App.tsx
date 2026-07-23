@@ -1,22 +1,40 @@
+import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 import { getCart } from "./api";
 import CartPanel from "./components/CartPanel";
 import ChatPanel from "./components/ChatPanel";
 import ComparisonTable from "./components/ComparisonTable";
+import Landing from "./components/Landing";
+import Logo from "./components/Logo";
 import ReviewPanel from "./components/ReviewPanel";
+import { supabase } from "./supabase";
 import type { CartResponse, ChatResponse } from "./types";
 import "./styles.css";
 
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [result, setResult] = useState<ChatResponse | null>(null);
   const [cart, setCart] = useState<CartResponse | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
 
+  // Track the auth session; the listener reveals or hides the app on its own.
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  // Load the cart once signed in.
+  useEffect(() => {
+    if (!session) return;
     getCart()
       .then(setCart)
       .catch((e) => setCartError(e instanceof Error ? e.message : String(e)));
-  }, []);
+  }, [session]);
 
   // Feed the cursor position to the interactive background glow.
   useEffect(() => {
@@ -36,32 +54,43 @@ export default function App() {
     };
   }, []);
 
+  if (!authReady) {
+    return (
+      <>
+        <div className="bg-glow" aria-hidden="true" />
+        <div className="app">
+          <p className="loading">Loading…</p>
+        </div>
+      </>
+    );
+  }
+
+  if (!session) {
+    return (
+      <>
+        <div className="bg-glow" aria-hidden="true" />
+        <Landing />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="bg-glow" aria-hidden="true" />
       <div className="app">
         <header className="hero">
-          <h1 className="brand">
-            <span className="logo" aria-hidden="true">
-              {/* A cart whose contents are the comparison value-bars. */}
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="8.3" y="9.5" width="1.7" height="4.5" rx="0.6" fill="#fff" stroke="none" />
-                <rect x="11.3" y="7" width="1.7" height="7" rx="0.6" fill="#fff" stroke="none" />
-                <rect x="14.3" y="10.5" width="1.7" height="3.5" rx="0.6" fill="#fff" stroke="none" />
-                <path d="M2.5 2.5h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.5" />
-                <circle cx="9" cy="20.4" r="1.1" />
-                <circle cx="18.4" cy="20.4" r="1.1" />
-              </svg>
-            </span>
-            <span className="brand-name">Cart Copilot</span>
-          </h1>
+          <div className="hero-top">
+            <h1 className="brand">
+              <Logo />
+              <span className="brand-name">Cart Copilot</span>
+            </h1>
+            <div className="account">
+              <span className="account-email mono">{session.user.email}</span>
+              <button className="ghost" onClick={() => supabase.auth.signOut()}>
+                Sign out
+              </button>
+            </div>
+          </div>
           <p className="tagline">
             An AI assistant that reasons over your whole cart, catching savings, spec mismatches, and
             shipping you pay for twice.
