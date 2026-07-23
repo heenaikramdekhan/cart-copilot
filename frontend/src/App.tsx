@@ -82,8 +82,12 @@ export default function App() {
             <span className="account-email mono">
               {session?.user.user_metadata?.name || session?.user.email}
             </span>
-            <button className="ghost" onClick={() => supabase.auth.signOut()}>
-              Sign out
+            <button
+              className="ghost"
+              onClick={() => supabase.auth.signOut()}
+              title="Back to login"
+            >
+              ← Sign out
             </button>
           </div>
         </div>
