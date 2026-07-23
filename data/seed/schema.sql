@@ -22,7 +22,10 @@ create table products (
     -- Aggregates the store APIs also return, kept so a summary can state how
     -- many reviews back the corpus average.
     average_rating   double precision,
-    rating_number    integer
+    rating_number    integer,
+    -- The corpus's Sept 2023 snapshot price, used only by catalog mode when no
+    -- live store is configured. Null for the items the corpus never priced.
+    price            numeric
 );
 
 create index products_model_number_idx on products (model_number);

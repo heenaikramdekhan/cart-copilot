@@ -43,8 +43,27 @@ def test_search_passes_the_query_to_the_store(monkeypatch):
             )
         ]
 
+    monkeypatch.setattr(product_search.ebay_client, "configured", True)
     monkeypatch.setattr(product_search.ebay_client, "search", fake)
     results = product_search.search(Requirements(category="mouse"))
 
     assert captured["q"] == "mouse"
     assert len(results) == 1
+
+
+def test_falls_back_to_catalog_when_ebay_unconfigured(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(product_search.ebay_client, "configured", False)
+    monkeypatch.setattr(
+        product_search.ebay_client,
+        "search",
+        lambda q: (_ for _ in ()).throw(AssertionError("eBay must not run when unconfigured")),
+    )
+    monkeypatch.setattr(
+        product_search.catalog, "search", lambda reqs: captured.setdefault("reqs", reqs) or []
+    )
+
+    reqs = Requirements(category="mouse")
+    product_search.search(reqs)
+
+    assert captured["reqs"] is reqs

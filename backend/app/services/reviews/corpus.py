@@ -56,6 +56,25 @@ def _first_upc(value: object) -> str | None:
     return upc.split()[0]
 
 
+def _price(value: object) -> str | None:
+    """A single snapshot price the catalog can rank on, or None.
+
+    The field is a bare number for most items and absent for many. A handful
+    carry a range like '$10.00 - $20.00', which is dropped rather than reported
+    as one misleading end of it. Returned as a fixed-point string so the numeric
+    column stores exact cents.
+    """
+    if isinstance(value, (int, float)):
+        return f"{value:.2f}" if value > 0 else None
+    if not isinstance(value, str) or "-" in value or "–" in value:
+        return None
+    match = re.search(r"\d+(?:\.\d+)?", value.replace(",", ""))
+    if match is None:
+        return None
+    amount = float(match.group())
+    return f"{amount:.2f}" if amount > 0 else None
+
+
 def tier_slug(meta: dict) -> str | None:
     """The locked tier this item belongs to, or None if it is out of scope."""
     categories = meta.get("categories") or []
@@ -89,6 +108,9 @@ def product_from_meta(meta: dict) -> dict | None:
         "category": category,
         "average_rating": meta.get("average_rating"),
         "rating_number": meta.get("rating_number"),
+        # Snapshot price for catalog mode; None for the ~56% of items the
+        # corpus never priced. Nothing depends on it being present.
+        "price": _price(meta.get("price")),
     }
 
 

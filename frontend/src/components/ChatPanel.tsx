@@ -117,6 +117,12 @@ export default function ChatPanel({ onCart }: Props) {
                   </li>
                 ))}
               </ul>
+              {result.ranked_products.some((l) => l.store === "catalog") && (
+                <p className="notice">
+                  Prices are from a Sept 2023 catalog snapshot. Live store search connects when its
+                  API key is added.
+                </p>
+              )}
             </>
           )}
 

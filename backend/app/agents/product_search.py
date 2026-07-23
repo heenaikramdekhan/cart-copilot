@@ -4,12 +4,14 @@ Turns the analyzed requirements into a live store query and returns normalized
 candidate listings. Deterministic by design: no LLM. Fanning out to a store API
 and normalizing the response is I/O and mapping, not reasoning.
 
-Only eBay is wired today. Best Buy is the planned second leg; it slots in here
-as another source whose listings are concatenated onto the same list.
+eBay is the live source. Until its key is configured, the search falls back to
+catalog mode — the ingested corpus priced from its Sept 2023 snapshot — so the
+rest of the pipeline has real products to work on. The fallback disappears on
+its own once eBay is configured. Best Buy is the planned second live leg.
 """
 
 from app.graph.state import Requirements
-from app.services.stores import ebay_client
+from app.services.stores import catalog, ebay_client
 from app.services.stores.models import Listing
 
 
@@ -28,4 +30,6 @@ def search(requirements: Requirements) -> list[Listing]:
     query = _query(requirements)
     if not query:
         return []
-    return ebay_client.search(query)
+    if ebay_client.configured:
+        return ebay_client.search(query)
+    return catalog.search(requirements)

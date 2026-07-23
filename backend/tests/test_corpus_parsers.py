@@ -78,6 +78,18 @@ def test_product_kept_with_upc_only():
     assert product["model_number"] is None
 
 
+def test_price_extracted_as_fixed_point_string():
+    assert product_from_meta({**META, "price": 98.4})["price"] == "98.40"
+    assert product_from_meta({**META, "price": "$34.98"})["price"] == "34.98"
+
+
+def test_unpriced_or_ambiguous_price_is_none():
+    """Missing, empty, or a range — the corpus priced only some items."""
+    assert product_from_meta(META)["price"] is None
+    assert product_from_meta({**META, "price": ""})["price"] is None
+    assert product_from_meta({**META, "price": "$10.00 - $20.00"})["price"] is None
+
+
 def test_review_maps_fields_and_converts_epoch_millis():
     review = review_from_record(REVIEW)
 
