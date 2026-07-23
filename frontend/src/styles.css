@@ -345,6 +345,22 @@ button:disabled {
   box-shadow: none;
 }
 
+/* Quiet secondary button, e.g. Clear. */
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+button.ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--muted);
+  transform: none;
+  box-shadow: none;
+}
+
 /* Suggestion chips */
 .chips {
   display: flex;

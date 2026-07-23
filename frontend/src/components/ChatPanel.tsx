@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { chat } from "../api";
 import type { ChatResponse } from "../types";
 
 type Props = {
   result: ChatResponse | null;
-  onResult: (result: ChatResponse) => void;
+  onResult: (result: ChatResponse | null) => void;
 };
 
 const SUGGESTIONS = ["wireless mouse", "mechanical keyboard", "usb hub", "gaming headset"];
@@ -13,6 +13,7 @@ export default function ChatPanel({ result, onResult }: Props) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   async function runSearch(query: string) {
     if (!query.trim()) return;
@@ -37,6 +38,14 @@ export default function ChatPanel({ result, onResult }: Props) {
     runSearch(query);
   }
 
+  // Reset for a fresh search: clears the box and the results, keeps the cart.
+  function clearSearch() {
+    setMessage("");
+    setError(null);
+    onResult(null);
+    inputRef.current?.focus();
+  }
+
   const requirements = result?.requirements;
 
   return (
@@ -46,6 +55,7 @@ export default function ChatPanel({ result, onResult }: Props) {
 
       <form onSubmit={send} className="row">
         <input
+          ref={inputRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="a wireless mouse under $40, must be bluetooth"
@@ -54,6 +64,11 @@ export default function ChatPanel({ result, onResult }: Props) {
         <button type="submit" disabled={busy || !message.trim()}>
           {busy ? "Searching…" : "Search"}
         </button>
+        {(result || message) && (
+          <button type="button" className="ghost" onClick={clearSearch} disabled={busy}>
+            Clear
+          </button>
+        )}
       </form>
 
       <div className="chips">
