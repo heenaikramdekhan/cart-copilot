@@ -7,6 +7,14 @@ whole cart for savings and mismatches. All data is real; nothing is mocked.
 See [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) for the full plan and
 [`CLAUDE.md`](CLAUDE.md) for the working agreement and architecture notes.
 
+## Live demo
+
+**<https://cart-copilot-kohl.vercel.app>**
+
+Frontend on Vercel, FastAPI backend on Render, review corpus on Supabase. The backend runs on a
+free tier that sleeps when idle, so the first request after a quiet spell can take up to a minute
+to wake; after that it is fast.
+
 ## Setup
 
 **Backend** (Python 3.10+)
@@ -37,9 +45,10 @@ Runs on <http://localhost:5173>; `/api/*` is proxied to the backend.
 
 ## Status
 
-Four of the six agents run against real data: Requirement Analyzer, Comparison, Review
-Intelligence, and Cart Optimization. The review corpus holds 141,240 real reviews across 6,050
-products, and the chat, cart, and review endpoints are live.
+Deployed and live (see above). All six agents run against real data. The review corpus holds
+141,240 real reviews across ~5,600 products.
 
-Product Search and Deal & Coupon are waiting on eBay API approval; their response mapping is
-written and tested, so they plug in without changing anything else.
+Product Search serves **catalog mode** — the ingested Amazon corpus priced from its Sept 2023
+snapshot — until eBay's Buy API access is granted. The live eBay client is written and
+OAuth-verified against production; it switches in through one environment variable, with no other
+change. Deal & Coupon surfaces the store-reported discounts a listing carries.
