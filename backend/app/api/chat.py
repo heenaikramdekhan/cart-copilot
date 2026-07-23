@@ -1,16 +1,20 @@
-"""Chat route — understand what the shopper is asking for.
+"""Chat route — understand the request, then search and rank against it.
 
-Today this runs Agent 1 and stops. Search, comparison and review summaries join
-the response once Agent 2 can reach a live store; the response shape already
-carries them so the frontend does not change when it does.
+Runs Agent 1 (Requirement Analyzer) → Agent 2 (Product Search) → Agent 3
+(Comparison). Product Search needs eBay credentials; without them the route
+returns the parsed requirements and says the store is unavailable rather than
+an empty result that would read as "nothing found". Review summaries (Agent 4)
+join the response once that agent is wired.
 """
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.agents.requirement_analyzer import analyze
+from app.graph.discovery import graph as discovery_graph
 from app.graph.state import Requirements
 from app.services import sessions
+from app.services.stores import ebay_client
 from app.services.stores.models import Listing
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -33,10 +37,23 @@ class ChatResponse(BaseModel):
 def chat(request: ChatRequest) -> ChatResponse:
     state = sessions.get(request.session_id)
     state.user_query = request.message
-    state.requirements = analyze(request.message)
 
+    # Without a store to search, only Agent 1 can run. Report why rather than
+    # returning an empty list that would read as "nothing found".
+    if not ebay_client.configured:
+        state.requirements = analyze(request.message)
+        return ChatResponse(
+            requirements=state.requirements,
+            ranked_products=[],
+            unavailable="eBay credentials are not configured yet, so no listings were fetched.",
+        )
+
+    result = discovery_graph.invoke(state)
+    state.requirements = result["requirements"]
+    state.search_results = result["search_results"]
+    state.ranked_products = result["ranked_products"]
     return ChatResponse(
         requirements=state.requirements,
         ranked_products=state.ranked_products,
-        unavailable="Product search is not connected yet, so no listings were fetched.",
+        unavailable=None if state.ranked_products else "No listings matched your requirements.",
     )

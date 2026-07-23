@@ -7,7 +7,7 @@ tests are checking is the cart behaviour around it, not its wording.
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api import cart as cart_route
+from app.agents import cart_optimization
 from app.main import app
 from app.services import sessions
 
@@ -17,7 +17,8 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def fresh_session(monkeypatch):
     sessions.clear()
-    monkeypatch.setattr(cart_route, "narrate", lambda flags: f"advice for {len(flags)} flags")
+    # narrate runs inside the cart graph now; stub it where the graph looks it up.
+    monkeypatch.setattr(cart_optimization, "narrate", lambda flags: f"advice for {len(flags)} flags")
 
 
 def item(item_id, title="Logitech MX Master 3S", price="80", mpn="910-006556", shipping=None):
@@ -41,7 +42,7 @@ def test_unknown_session_returns_an_empty_cart_not_an_error():
     r = client.get("/api/cart/never-seen")
 
     assert r.status_code == 200
-    assert r.json() == {"items": [], "flags": [], "advice": None}
+    assert r.json() == {"items": [], "flags": [], "advice": None, "deals": []}
 
 
 def test_adding_an_item_returns_the_updated_cart():
@@ -83,7 +84,7 @@ def test_reading_the_cart_does_not_regenerate_the_advice():
     client.post("/api/cart/s1/items", json=item("2", price="84"))
 
     calls = []
-    cart_route.narrate = lambda flags: calls.append(flags) or "regenerated"
+    cart_optimization.narrate = lambda flags: calls.append(flags) or "regenerated"
 
     r = client.get("/api/cart/s1")
 
