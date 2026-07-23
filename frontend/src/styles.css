@@ -1100,27 +1100,40 @@ ul.deals {
   }
 }
 
-/* Main app entrance: the header then each panel rise and fade in, staggered. */
+/* Main app entrance: a dramatic spring-in. Panels drop in from below, scale up,
+   and overshoot slightly before settling, one after another. */
 .app > .hero {
-  animation: landing-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: app-enter 0.7s cubic-bezier(0.34, 1.45, 0.5, 1) both;
 }
 
 .col-main > .panel,
 .col-side > .panel {
-  animation: landing-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: app-enter 0.8s cubic-bezier(0.34, 1.45, 0.5, 1) both;
+  transform-origin: center top;
 }
 
 .col-main > .panel:nth-child(1) {
-  animation-delay: 0.08s;
+  animation-delay: 0.14s;
 }
 .col-main > .panel:nth-child(2) {
-  animation-delay: 0.18s;
+  animation-delay: 0.32s;
 }
 .col-side > .panel:nth-child(1) {
-  animation-delay: 0.13s;
+  animation-delay: 0.23s;
 }
 .col-side > .panel:nth-child(2) {
-  animation-delay: 0.23s;
+  animation-delay: 0.41s;
+}
+
+@keyframes app-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(60px) scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ---------- Auth card ---------- */
