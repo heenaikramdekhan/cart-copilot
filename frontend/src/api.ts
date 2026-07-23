@@ -3,8 +3,12 @@ import type { CartResponse, ChatResponse, Listing, ReviewResponse } from "./type
 /** One cart per browser tab. Sessions live in backend memory, so this is not persisted. */
 const sessionId = crypto.randomUUID();
 
+// Empty in dev (Vite proxies /api to the backend); set to the backend's URL in
+// production via the VITE_API_BASE build-time env var.
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
