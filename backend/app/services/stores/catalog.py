@@ -35,6 +35,8 @@ def _listing(row: dict) -> Listing:
         url=f"https://www.amazon.com/dp/{row['parent_asin']}",
         brand=row["brand"],
         mpn=row["model_number"],
+        rating=row["average_rating"],
+        rating_count=row["rating_number"],
     )
 
 
@@ -42,7 +44,7 @@ def search(requirements: Requirements, limit: int = 20) -> list[Listing]:
     """Priced catalog products whose title matches the requested category."""
     query = (
         _client.table("products")
-        .select("parent_asin,title,brand,model_number,price")
+        .select("parent_asin,title,brand,model_number,price,average_rating,rating_number")
         .not_.is_("price", "null")
     )
     if requirements.category:

@@ -16,6 +16,8 @@ def test_row_maps_to_a_catalog_listing():
             "brand": "Logitech",
             "model_number": "910-006556",
             "price": 98.4,
+            "average_rating": 4.6,
+            "rating_number": 12043,
         }
     )
 
@@ -24,4 +26,6 @@ def test_row_maps_to_a_catalog_listing():
     assert listing.price == Decimal("98.4")
     assert listing.mpn == "910-006556"
     assert listing.brand == "Logitech"
+    assert listing.rating == 4.6
+    assert listing.rating_count == 12043
     assert listing.url == "https://www.amazon.com/dp/B0BS9SB6XM"
