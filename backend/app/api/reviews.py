@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.agents.review_intelligence import summarize
 from app.graph.state import ReviewSummary
+from app.services.llm import LLMError
 from app.services.reviews.source import find_reviews
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
@@ -30,8 +31,16 @@ def product_reviews(model_number: str, brand: str | None = None) -> ReviewRespon
             detail="No reviewed product matches that brand and model number",
         )
 
+    try:
+        summary = summarize(match)
+    except LLMError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The AI is busy right now (free-tier rate limit). Please wait a minute and try again.",
+        ) from exc
+
     return ReviewResponse(
         product_title=match.title,
         matched_on=match.matched_on,
-        summary=summarize(match),
+        summary=summary,
     )
