@@ -32,9 +32,14 @@ npm run dev
 
 Runs on <http://localhost:5173>; `/api/*` is proxied to the backend.
 
-**Database** — create a Supabase project, enable the `vector` extension, then run
+**Database** — create a Supabase project, then run
 `data/seed/schema.sql` in the SQL editor. See [`data/README.md`](data/README.md).
 
 ## Status
 
-Phase 0 scope is locked (real data, category Tiers 1–3). Phase 1 — the real data layer — is next.
+Four of the six agents run against real data: Requirement Analyzer, Comparison, Review
+Intelligence, and Cart Optimization. The review corpus holds 141,240 real reviews across 6,050
+products, and the chat, cart, and review endpoints are live.
+
+Product Search and Deal & Coupon are waiting on eBay API approval; their response mapping is
+written and tested, so they plug in without changing anything else.

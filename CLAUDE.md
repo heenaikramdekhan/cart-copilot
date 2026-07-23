@@ -34,8 +34,8 @@ Project-specific corollaries:
 | Frontend | React 19 + TypeScript, Vite |
 | Backend | FastAPI (Python 3.10+) |
 | Orchestration | LangGraph |
-| Database | Supabase (Postgres + pgvector) |
-| LLM | Claude API — `claude-opus-4-8` via the `anthropic` Python SDK |
+| Database | Supabase (Postgres) |
+| LLM | Gemini API — `gemini-2.5-flash` via the `google-genai` Python SDK |
 
 ## Layout
 
@@ -47,9 +47,9 @@ backend/
     api/           route modules (chat, cart)
     agents/        the six agents, one module each
     graph/         LangGraph state schema + graph builder
-    services/      Claude client, Supabase client, embeddings
+    services/      LLM client, Supabase client, store APIs, review corpus
     prompts/       prompt templates for the 3 LLM agents
-  scripts/         one-off scripts (DB seeding, embedding generation)
+  scripts/         one-off scripts (corpus ingest)
   tests/
 frontend/
   src/
@@ -86,20 +86,24 @@ npm run dev          # http://localhost:5173
 | 3 | Comparison | normalize specs, rank top 5 | No |
 | 4 | Review Intelligence | real review text → pros/cons | Yes |
 | 5 | **Cart Optimization** | rule checks → natural-language recommendation | Rules + LLM |
-| 6 | Deal & Coupon | match cart against per-store discount rules | No |
+| 6 | Deal & Coupon | surface real markdowns and coupon availability reported by the store | No |
 
 Agents 5 and 6 are independent and run as parallel branches in the graph.
 
-## Claude API notes
+## LLM notes
 
-- Model: `claude-opus-4-8`. Use `thinking={"type": "adaptive"}` for the reasoning-heavy agents
-  (Requirement Analyzer, Cart Optimization narrative).
-- `temperature` / `top_p` / `top_k` and `budget_tokens` are **rejected** on this model — do not
-  add them. Control depth with `output_config={"effort": ...}`.
-- For agents that must return structured data (Requirement Analyzer, Review Intelligence), use
-  `client.messages.parse()` with a Pydantic model rather than parsing JSON out of free text.
-- The system prompt for each agent is a stable prefix — mark it with `cache_control` so repeated
-  turns hit the prompt cache.
+- Model: `gemini-2.5-flash` via the `google-genai` SDK. Chosen because Gemini's Flash tier is
+  permanently free with no card — a cost constraint, not a capability judgement. Pro-class models
+  left the free tier in April 2026.
+- Every LLM call goes through `app/services/llm.py`. Swapping providers means changing that file
+  and the three agent call sites, never the graph or the state schema.
+- For structured output, pass the Pydantic model as `response_schema` with
+  `response_mime_type="application/json"`, and read `response.parsed`. Do not parse JSON out of
+  free text — a malformed answer should fail at the boundary, not downstream.
+- Each agent's system prompt lives in its own module under `prompts/` so it stays a stable,
+  reusable constant. Nothing per-request may be interpolated into it.
+- Free tier is rate limited (requests per minute and per day). Batch or back off rather than
+  retrying in a tight loop.
 
 ## Data sources
 
@@ -109,11 +113,15 @@ Agents 5 and 6 are independent and run as parallel branches in the graph.
 | Prices, stock, star rating, review count | Best Buy Products API (free key) | live per query |
 | Review **text** | Amazon Reviews 2023 (UCSD McAuley Lab) | static snapshot, ends Sept 2023 |
 
-Products are joined across sources on **UPC/GTIN plus manufacturer model number**. Never join on
-fuzzy title similarity — that silently attaches the wrong reviews to a product.
+Products are joined across sources on **brand plus manufacturer model number** — the corpus
+`Item model number` matched against eBay's `mpn`. Measured on a 4,000-item Electronics sample,
+62.7% of items carry a model number and only 0.1% carry a UPC, so UPC/GTIN is stored when present
+but nothing may depend on it. Never join on fuzzy title similarity — that silently attaches the
+wrong reviews to a product.
 
-pgvector holds the review corpus, not a product catalog. Products are fetched live; reviews are
-retrieved by similarity against the stored corpus.
+Postgres holds the review corpus, not a product catalog. Products are fetched live; reviews are
+retrieved by product identity (`where parent_asin = ...`), not by similarity — so there is no
+embedding column and no pgvector. Add one only when a feature actually needs semantic search.
 
 ## Constraints worth remembering
 
@@ -133,7 +141,7 @@ retrieved by similarity against the stored corpus.
 Tiers 1–3 are in scope. The schema is category-agnostic; these tiers are a data decision.
 
 - **Tier 1 — PC peripherals & components** (build first): laptops, monitors, keyboards, mice,
-  headsets, docking stations, SSDs/RAM, routers. Chosen because UPC identity is reliable, both APIs
+  headsets, docking stations, SSDs/RAM, routers. Chosen because model-number identity is reliable, both APIs
   carry it, Amazon Electronics is the deepest review corpus, and it is the only cluster with genuine
   cross-item compatibility rules for Agent 5 (refresh rate vs. GPU, dock vs. available ports,
   DDR4 vs. DDR5, same-seller shipping consolidation).
