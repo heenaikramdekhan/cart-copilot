@@ -16,6 +16,7 @@ from app.agents import cart_optimization, deal_coupon
 from app.graph.cart import graph as cart_graph
 from app.graph.state import CartFlag, CartItem, Deal
 from app.services import sessions
+from app.services.llm import LLMError
 from app.services.stores.models import Listing
 
 router = APIRouter(prefix="/api/cart", tags=["cart"])
@@ -38,10 +39,17 @@ def _respond(session_id: str, recompute_advice: bool) -> CartResponse:
     if recompute_advice:
         # The cart changed: run the cart graph so Agents 5 and 6 recompute in
         # parallel, including the LLM-written advice.
-        result = cart_graph.invoke(state)
-        state.cart_flags = result["cart_flags"]
-        state.cart_advice = result["cart_advice"]
-        state.deals = result["deals"]
+        try:
+            result = cart_graph.invoke(state)
+            state.cart_flags = result["cart_flags"]
+            state.cart_advice = result["cart_advice"]
+            state.deals = result["deals"]
+        except LLMError:
+            # Only the written advice needs the AI. If it is rate limited, still
+            # give the shopper their flags and deals rather than failing the add.
+            state.cart_flags = cart_optimization.check(state.cart, state.search_results)
+            state.deals = deal_coupon.find_deals([item.listing for item in state.cart])
+            state.cart_advice = None
     else:
         # A plain read: refresh the free deterministic outputs and reuse the
         # cached advice, so a read never spends an LLM call.

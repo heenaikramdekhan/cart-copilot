@@ -7,13 +7,16 @@ real products to rank. Review summaries (Agent 4) are fetched per product,
 lazily, behind /api/reviews.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.graph.discovery import graph as discovery_graph
 from app.graph.state import Requirements
 from app.services import sessions
+from app.services.llm import LLMError
 from app.services.stores.models import Listing
+
+AI_BUSY = "The AI is busy right now (free-tier rate limit). Please wait a minute and try again."
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -35,7 +38,12 @@ def chat(request: ChatRequest) -> ChatResponse:
     state = sessions.get(request.session_id)
     state.user_query = request.message
 
-    result = discovery_graph.invoke(state)
+    try:
+        result = discovery_graph.invoke(state)
+    except LLMError as exc:
+        # A clean 503 carries CORS headers, so the UI shows this reason rather
+        # than a bare "failed to fetch".
+        raise HTTPException(status_code=503, detail=AI_BUSY) from exc
     state.requirements = result["requirements"]
     state.search_results = result["search_results"]
     state.ranked_products = result["ranked_products"]

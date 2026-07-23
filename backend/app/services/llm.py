@@ -10,8 +10,14 @@ Deal & Coupon are deterministic by design and must not import this.
 """
 
 from google import genai
+from google.genai import errors
 
 from app.config import settings
+
+# The provider's error type, re-exported so routes can catch a rate limit or
+# outage and degrade gracefully. Swapping providers changes it here, not in the
+# routes.
+LLMError = errors.APIError
 
 # Free tier is Flash-class only; Pro moved to paid in April 2026.
 #
