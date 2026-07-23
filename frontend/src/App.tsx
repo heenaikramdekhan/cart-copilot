@@ -85,7 +85,9 @@ export default function App() {
               <span className="brand-name">Cart Copilot</span>
             </h1>
             <div className="account">
-              <span className="account-email mono">{session.user.email}</span>
+              <span className="account-email mono">
+                {session.user.user_metadata?.name || session.user.email}
+              </span>
               <button className="ghost" onClick={() => supabase.auth.signOut()}>
                 Sign out
               </button>

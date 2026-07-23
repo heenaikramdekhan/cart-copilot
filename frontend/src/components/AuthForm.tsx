@@ -3,6 +3,7 @@ import { supabase } from "../supabase";
 
 export default function AuthForm() {
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,8 +17,18 @@ export default function AuthForm() {
     setNotice(null);
     try {
       if (mode === "signup") {
-        const { data, error: err } = await supabase.auth.signUp({ email, password });
+        const { data, error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name: name.trim() } },
+        });
         if (err) throw err;
+        // Supabase hides whether an email exists: an already-registered email
+        // comes back with no identities and sends no email. Surface it plainly.
+        if (data.user && data.user.identities?.length === 0) {
+          setError("That email is already registered. Try logging in instead.");
+          return;
+        }
         // If email confirmation is on, there is no session until the user clicks
         // the link; a successful login then reveals the app.
         if (!data.session) {
@@ -55,6 +66,19 @@ export default function AuthForm() {
       </div>
 
       <form onSubmit={submit} className="auth-form">
+        {mode === "signup" && (
+          <label>
+            <span>Name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              autoComplete="name"
+              required
+            />
+          </label>
+        )}
         <label>
           <span>Email</span>
           <input
